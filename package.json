@@ -7,7 +7,7 @@
     "build": "next build",
     "build:sites": "opennextjs-cloudflare build",
     "start": "next start",
-    "test": "tsc --pretty false --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir .test-dist tests/recommendation-model.test.ts src/lib/recommendation-model.ts && node --test .test-dist/tests/recommendation-model.test.js",
+    "test": "tsc --pretty false --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir .test-dist tests/recommendation-model.test.ts tests/public-access-policy.test.ts src/lib/recommendation-model.ts src/lib/public-access-policy.ts && node --test .test-dist/tests/*.test.js",
     "typecheck": "tsc --noEmit",
     "trigger:dev": "trigger dev",
     "trigger:deploy": "trigger deploy"

@@ -9,6 +9,13 @@ import { z } from "zod";
 
 import { AIRPORTS } from "@/lib/airport-advice";
 import { calculateAirportAdvice } from "@/lib/calculate-airport-advice";
+import { claimChatModelTurn } from "@/lib/chat-usage-limit";
+import {
+  assertChatMessageHistoryAllowed,
+  assertChatTurnAllowed,
+  chatClientDataSchema,
+  validateIncomingChatMessages,
+} from "@/lib/public-access-policy";
 import { isValidCalendarDate } from "@/lib/recommendation-model";
 
 const supportedAirports = new Set(
@@ -89,17 +96,24 @@ export const airportChat = chat
   .agent({
     id: "airport-arrival-chat",
     tools: airportTools,
-    clientDataSchema: z.object({
-      localDate: z
-        .string()
-        .refine(isValidCalendarDate, {
-          message: "Use the traveller's local date in YYYY-MM-DD format",
-        }),
-      timeZone: z.string().min(1).max(100),
-    }),
+    clientDataSchema: chatClientDataSchema,
+    machine: "small-1x",
+    queue: {
+      name: "gatewise-public-chat",
+      concurrencyLimit: 2,
+    },
     // A chat can span several user turns, so allow the session to stay active.
     maxDuration: 3600,
+    chatAccessTokenTTL: "15m",
     idleTimeoutInSeconds: 30,
+    onValidateMessages: async ({ messages, turn }) => {
+      validateIncomingChatMessages(messages, turn);
+      return messages;
+    },
+    onTurnStart: async ({ chatId, runId, turn, uiMessages }) => {
+      assertChatMessageHistoryAllowed(uiMessages);
+      await claimChatModelTurn(chatId, runId, turn);
+    },
     run: async ({ messages, tools, signal, clientData }) => {
       const airportList = AIRPORTS.map(
         (airport) => `${airport.code} (${airport.city})`,

@@ -520,7 +520,7 @@ export default function Home() {
     event.preventDefault();
     const text = question.trim();
 
-    if (!text || isBusy) {
+    if (!text || text.length > 600 || isBusy) {
       return;
     }
 
@@ -621,6 +621,7 @@ export default function Home() {
                 placeholder="e.g. JFK tomorrow at 09:00, U.S. domestic, one checked bag, no PreCheck"
                 rows={3}
                 disabled={isBusy}
+                maxLength={600}
               />
             </label>
 
@@ -678,8 +679,8 @@ export default function Home() {
               <strong>The agent couldn’t finish</strong>
               <p>{error.message}</p>
               <small>
-                Make sure both <code>pnpm trigger:dev</code> and{" "}
-                <code>pnpm dev</code> are running.
+                Anonymous sessions are deliberately limited to protect the
+                hackathon demo quota.
               </small>
             </div>
           )}
