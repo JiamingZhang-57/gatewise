@@ -124,7 +124,7 @@ export const airportChat = chat
 
       return streamText({
         ...chat.toStreamTextOptions({ tools }),
-        model: google("gemini-3.5-flash"),
+        model: google("gemini-3.1-flash-lite"),
         messages,
         abortSignal: signal,
         providerOptions: {
