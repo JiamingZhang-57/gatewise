@@ -33,8 +33,16 @@ jobs:
       - name: Bundle the production Worker
         run: pnpm wrangler deploy --dry-run --outdir dist
 
+      - name: Prepare the Sites OpenNext bundle
+        run: |
+          mkdir -p .sites-build/.open-next .sites-build/.openai
+          cp dist/worker.js .sites-build/.open-next/worker.js
+          cp -R .open-next/assets .sites-build/.open-next/assets
+          cp .openai/hosting.json .sites-build/.openai/hosting.json
+          cp wrangler.jsonc .sites-build/wrangler.jsonc
+
       - name: Package Sites artifact
-        run: tar --dereference --hard-dereference -czf gatewise-sites.tar.gz dist .open-next/assets .openai/hosting.json wrangler.jsonc
+        run: tar -czf "$GITHUB_WORKSPACE/gatewise-sites.tar.gz" -C .sites-build .
 
       - name: Upload Sites artifact
         uses: actions/upload-artifact@v4
