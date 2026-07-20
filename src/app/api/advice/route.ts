@@ -1,8 +1,16 @@
 import { tasks } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
 
-import type { AirportAdvicePayload } from "@/lib/airport-advice";
+import {
+  AIRPORTS,
+  type AirportAdvicePayload,
+} from "@/lib/airport-advice";
+import { isValidCalendarDate } from "@/lib/recommendation-model";
 import type { airportArrivalAdvisor } from "@/trigger/airport-arrival-advisor";
+
+const supportedAirports = new Set(
+  AIRPORTS.map((airport) => airport.code as string),
+);
 
 function isValidPayload(value: unknown): value is AirportAdvicePayload {
   if (!value || typeof value !== "object") {
@@ -12,13 +20,16 @@ function isValidPayload(value: unknown): value is AirportAdvicePayload {
   const payload = value as Partial<AirportAdvicePayload>;
 
   return Boolean(
-    typeof payload.question === "string" &&
+      typeof payload.question === "string" &&
       typeof payload.origin === "string" &&
-      /^[A-Za-z]{3}$/.test(payload.origin) &&
+      supportedAirports.has(payload.origin.trim().toUpperCase()) &&
       typeof payload.travelDate === "string" &&
-      /^\d{4}-\d{2}-\d{2}$/.test(payload.travelDate) &&
+      isValidCalendarDate(payload.travelDate) &&
       typeof payload.departureTime === "string" &&
-      /^\d{2}:\d{2}$/.test(payload.departureTime),
+      /^([01]\d|2[0-3]):[0-5]\d$/.test(payload.departureTime) &&
+      payload.flightScope === "us-domestic" &&
+      typeof payload.checkedBag === "boolean" &&
+      typeof payload.tsaPrecheck === "boolean",
   );
 }
 
@@ -27,7 +38,10 @@ export async function POST(request: Request) {
 
   if (!isValidPayload(payload)) {
     return NextResponse.json(
-      { error: "Please provide a valid airport, date and departure time." },
+      {
+        error:
+          "Please provide a valid U.S. domestic airport, date, departure time, checked-bag status and TSA PreCheck status.",
+      },
       { status: 400 },
     );
   }

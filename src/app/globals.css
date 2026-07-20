@@ -630,11 +630,30 @@ input[type="time"] {
 
 .arrival-time {
   color: var(--acid);
-  font-size: clamp(74px, 8.5vw, 128px);
+  font-size: clamp(66px, 7.4vw, 112px);
   font-weight: 600;
   letter-spacing: -0.09em;
   line-height: 0.92;
   text-shadow: 0 0 40px rgba(239, 255, 100, 0.08);
+}
+
+.arrival-window {
+  align-items: baseline;
+  display: flex;
+  gap: 16px;
+}
+
+.window-arrow {
+  color: var(--muted-2);
+  font-family: "DM Mono", monospace;
+  font-size: 18px;
+}
+
+.guideline-time {
+  color: var(--ink);
+  font-size: clamp(32px, 3.5vw, 54px);
+  font-weight: 500;
+  letter-spacing: -0.065em;
 }
 
 .arrival-context {
@@ -726,7 +745,7 @@ input[type="time"] {
   left: -2px;
 }
 
-.journey-node.security {
+.journey-node.guideline {
   left: 48%;
 }
 
@@ -762,6 +781,80 @@ input[type="time"] {
   color: var(--muted-2);
   font-size: 8px;
   margin-top: 2px;
+}
+
+.timing-breakdown {
+  background: rgba(11, 13, 9, 0.52);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  padding: 15px;
+}
+
+.breakdown-heading {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.breakdown-heading .eyebrow {
+  font-size: 7px;
+  margin-bottom: 4px;
+}
+
+.breakdown-heading strong {
+  font-size: 11px;
+}
+
+.breakdown-heading > span {
+  color: var(--acid);
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+}
+
+.breakdown-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.breakdown-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px;
+}
+
+.breakdown-card > span,
+.breakdown-card small {
+  color: var(--muted-2);
+  font-size: 7px;
+}
+
+.breakdown-card strong {
+  font-family: "DM Mono", monospace;
+  font-size: 16px;
+  margin: 4px 0 2px;
+}
+
+.breakdown-card.official {
+  border-color: rgba(130, 244, 177, 0.16);
+}
+
+.breakdown-card.official strong {
+  color: #93f6b9;
+}
+
+.breakdown-card.accent {
+  border-color: rgba(239, 255, 100, 0.16);
+}
+
+.breakdown-card.accent strong {
+  color: var(--acid);
 }
 
 .explanation-strip {
@@ -950,6 +1043,34 @@ input[type="time"] {
   padding: 10px 11px;
 }
 
+.guidance-links {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.rules-date {
+  color: var(--muted) !important;
+  display: block !important;
+  font-family: "DM Mono", monospace;
+  font-size: 6px !important;
+  margin-top: 7px;
+  text-transform: uppercase;
+}
+
+.guidance-links a {
+  color: #a7c8ff;
+  font-family: "DM Mono", monospace;
+  font-size: 6px;
+  text-decoration: none;
+}
+
+.guidance-links a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
 .evidence-row > div {
   display: flex;
   flex-direction: column;
@@ -1051,6 +1172,10 @@ input[type="time"] {
     right: 30px;
     top: 90px;
   }
+
+  .breakdown-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 820px) {
@@ -1085,7 +1210,11 @@ input[type="time"] {
   }
 
   .arrival-time {
-    font-size: 90px;
+    font-size: 78px;
+  }
+
+  .guideline-time {
+    font-size: 38px;
   }
 }
 
@@ -1104,6 +1233,18 @@ input[type="time"] {
 
   .verdict-metrics {
     width: 100%;
+  }
+
+  .arrival-window {
+    gap: 10px;
+  }
+
+  .arrival-time {
+    font-size: 64px;
+  }
+
+  .guideline-time {
+    font-size: 30px;
   }
 
   .metric-card {

@@ -5,12 +5,13 @@ import {
   type InferChatUIMessage,
   useTriggerChatTransport,
 } from "@trigger.dev/sdk/chat/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   mintAirportChatAccessToken,
   startAirportChatSession,
 } from "@/app/actions";
+import { DOMESTIC_GUIDANCE_SOURCES } from "@/lib/airport-advice";
 import type {
   AirportAdviceResult,
   HourlyAirportStat,
@@ -18,6 +19,31 @@ import type {
 import type { airportChat } from "@/trigger/airport-chat";
 
 type GatewiseMessage = InferChatUIMessage<typeof airportChat>;
+
+function getBrowserDateContext() {
+  const now = new Date();
+  const timeZone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const dateParts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .formatToParts(now)
+    .reduce<Record<string, string>>((parts, part) => {
+      if (part.type !== "literal") {
+        parts[part.type] = part.value;
+      }
+
+      return parts;
+    }, {});
+
+  return {
+    localDate: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
+    timeZone,
+  };
+}
 
 const SAMPLE_HOURLY: HourlyAirportStat[] = Array.from(
   { length: 24 },
@@ -42,20 +68,31 @@ const SAMPLE_RESULT: AirportAdviceResult = {
   city: "New York, NY",
   travelDate: "2026-07-21",
   departureTime: "09:00",
+  flightScope: "us-domestic",
+  checkedBag: false,
+  tsaPrecheck: true,
   dayOfWeek: 2,
   dayLabel: "Tuesday",
   arrivalTime: "06:30",
   arrivalDate: "2026-07-21",
+  officialGuidelineTime: "07:00",
+  officialGuidelineDate: "2026-07-21",
   recommendedMinutes: 150,
-  baselineMinutes: 120,
+  timingBreakdown: {
+    officialBaselineMinutes: 120,
+    checkedBagBufferMinutes: 0,
+    crowdBufferMinutes: 30,
+    tsaPrecheckAdjustmentMinutes: 0,
+  },
   crowdBufferMinutes: 30,
   crowdPercentile: 88,
   riskLevel: "moderate",
   selectedHour: SAMPLE_HOURLY[9],
   hourly: SAMPLE_HOURLY,
   dataWindow: "Preview - ask Gatewise for live data",
+  rulesCheckedOn: "2026-07-20",
   caveat:
-    "Historical flight volume is a congestion proxy. Security, check-in, traffic and airline cut-off times are not included.",
+    "The 120-minute domestic baseline follows official guidance. Checked-bag and historical activity buffers are Gatewise estimates. PreCheck is expedited but not guaranteed, so no fixed time is deducted. Verify airline cut-offs and live airport conditions.",
 };
 
 function formatDate(date: string) {
@@ -108,6 +145,11 @@ function AirportPulseChart({
   selectedHour: number;
 }) {
   const [hoveredHour, setHoveredHour] = useState(selectedHour);
+
+  useEffect(() => {
+    setHoveredHour(selectedHour);
+  }, [selectedHour]);
+
   const width = 760;
   const height = 250;
   const left = 42;
@@ -252,28 +294,22 @@ function AirportPulseChart({
 }
 
 function JourneyTimeline({ result }: { result: AirportAdviceResult }) {
-  const securityHour = (() => {
-    const [hour, minute] = result.arrivalTime.split(":").map(Number);
-    const date = new Date(Date.UTC(2026, 0, 1, hour, minute + 45));
-    return date.toISOString().slice(11, 16);
-  })();
-
   return (
     <div className="journey">
       <div className="journey-line">
         <span className="journey-progress" />
         <span className="journey-node active" />
-        <span className="journey-node security" />
+        <span className="journey-node guideline" />
         <span className="journey-node gate" />
       </div>
       <div className="journey-labels">
         <div>
           <strong>{result.arrivalTime}</strong>
-          <span>Arrive</span>
+          <span>Comfort target</span>
         </div>
         <div>
-          <strong>{securityHour}</strong>
-          <span>Through security</span>
+          <strong>{result.officialGuidelineTime}</strong>
+          <span>Official 2h line</span>
         </div>
         <div>
           <strong>{result.departureTime}</strong>
@@ -308,15 +344,29 @@ function AdvicePanel({
           <i />
           {preview ? "PREVIEW" : "LIVE ANALYSIS"}
         </span>
-        <span className="data-window">{result.dataWindow}</span>
+        <span className="data-window">
+          U.S. domestic · {result.dataWindow}
+        </span>
       </div>
 
       <div className="verdict-grid">
         <div className="verdict">
-          <p>ARRIVE NO LATER THAN</p>
-          <div className="arrival-time">{result.arrivalTime}</div>
+          <p>DATA-INFORMED ARRIVAL WINDOW</p>
+          <div className="arrival-window">
+            <span className="arrival-time">{result.arrivalTime}</span>
+            <span className="window-arrow">→</span>
+            <span className="guideline-time">
+              {result.officialGuidelineTime}
+            </span>
+          </div>
           <div className="arrival-context">
-            <span>{formatDate(result.arrivalDate)}</span>
+            <span>
+              {result.arrivalDate === result.officialGuidelineDate
+                ? formatDate(result.arrivalDate)
+                : `${formatDate(result.arrivalDate)} → ${formatDate(
+                    result.officialGuidelineDate,
+                  )}`}
+            </span>
             <span className="context-separator" />
             <span>{result.origin}</span>
           </div>
@@ -338,15 +388,59 @@ function AdvicePanel({
 
       <JourneyTimeline result={result} />
 
+      <div className="timing-breakdown">
+        <div className="breakdown-heading">
+          <div>
+            <span className="eyebrow">WHY THIS WINDOW</span>
+            <strong>Every minute is visible</strong>
+          </div>
+          <span>{formatMinutes(result.recommendedMinutes)} total</span>
+        </div>
+        <div className="breakdown-grid">
+          <div className="breakdown-card official">
+            <span>Official baseline</span>
+            <strong>
+              {result.timingBreakdown.officialBaselineMinutes}m
+            </strong>
+            <small>TSA + airline guidance</small>
+          </div>
+          <div className="breakdown-card">
+            <span>Checked bag</span>
+            <strong>
+              +{result.timingBreakdown.checkedBagBufferMinutes}m
+            </strong>
+            <small>
+              {result.checkedBag ? "handling margin" : "carry-on only"}
+            </small>
+          </div>
+          <div className="breakdown-card accent">
+            <span>Historical pressure</span>
+            <strong>+{result.timingBreakdown.crowdBufferMinutes}m</strong>
+            <small>ClickHouse activity proxy</small>
+          </div>
+          <div className="breakdown-card">
+            <span>TSA PreCheck</span>
+            <strong>
+              {result.timingBreakdown.tsaPrecheckAdjustmentMinutes}m
+            </strong>
+            <small>
+              {result.tsaPrecheck
+                ? "noted, never guaranteed"
+                : "standard screening"}
+            </small>
+          </div>
+        </div>
+      </div>
+
       <div className="explanation-strip">
         <div className="strip-icon">↗</div>
         <div>
           <strong>{busyLabel}</strong>
           <p>
             {String(departureHour).padStart(2, "0")}:00 averages{" "}
-            {result.selectedHour.averageFlights} scheduled departures. We added{" "}
-            {result.crowdBufferMinutes} minutes to the {result.baselineMinutes}
-            -minute baseline.
+            {result.selectedHour.averageFlights} scheduled departures. The
+            historical pressure signal adds {result.crowdBufferMinutes} minutes
+            without moving the official two-hour guideline later.
           </p>
         </div>
         <span className={`risk-pill ${result.riskLevel}`}>
@@ -372,7 +466,24 @@ function AdvicePanel({
           <span>Historical days</span>
           <strong>{result.selectedHour.sampleDays}</strong>
         </div>
-        <p>{result.caveat}</p>
+        <p>
+          {result.caveat}
+          <span className="rules-date">
+            Rules checked {result.rulesCheckedOn}
+          </span>
+          <span className="guidance-links">
+            {DOMESTIC_GUIDANCE_SOURCES.map((source) => (
+              <a
+                href={source.url}
+                key={source.url}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {source.label}
+              </a>
+            ))}
+          </span>
+        </p>
       </div>
 
       {busy && (
@@ -387,16 +498,18 @@ function AdvicePanel({
 }
 
 export default function Home() {
+  const clientDateContext = useMemo(getBrowserDateContext, []);
   const transport = useTriggerChatTransport<typeof airportChat>({
     task: "airport-arrival-chat",
     accessToken: ({ chatId }) => mintAirportChatAccessToken(chatId),
     startSession: ({ chatId, clientData }) =>
       startAirportChatSession({ chatId, clientData }),
+    clientData: clientDateContext,
   });
   const { messages, sendMessage, stop, status, error } =
     useChat<GatewiseMessage>({ transport });
   const [question, setQuestion] = useState(
-    "How early should I arrive at JFK for my 09:00 flight tomorrow?",
+    "I have a U.S. domestic flight from JFK tomorrow at 09:00. Carry-on only, and I have TSA PreCheck. When should I arrive?",
   );
   const liveResult = useMemo(() => getLatestAdvice(messages), [messages]);
   const result = liveResult ?? SAMPLE_RESULT;
@@ -439,8 +552,8 @@ export default function Home() {
             <span className="eyebrow">LIVE AGENT SESSION</span>
             <h1>Skip the airport guesswork.</h1>
             <p>
-              Ask naturally. Gatewise turns years of airport traffic into one
-              visual answer.
+              Ask naturally. Gatewise combines official U.S. domestic guidance,
+              your travel setup, and historical airport pressure.
             </p>
           </div>
 
@@ -451,8 +564,8 @@ export default function Home() {
                 <div>
                   <strong>Where and when are you flying?</strong>
                   <p>
-                    Include your origin airport, departure date, and take-off
-                    time.
+                    Include the date and time, confirm it is U.S. domestic, and
+                    tell me about checked bags and TSA PreCheck.
                   </p>
                 </div>
               </div>
@@ -505,7 +618,7 @@ export default function Home() {
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
-                placeholder="e.g. I fly from JFK tomorrow at 09:00. When should I arrive?"
+                placeholder="e.g. JFK tomorrow at 09:00, U.S. domestic, one checked bag, no PreCheck"
                 rows={3}
                 disabled={isBusy}
               />
@@ -516,23 +629,23 @@ export default function Home() {
                 type="button"
                 onClick={() =>
                   setQuestion(
-                    "I fly from LAX next Tuesday at 18:30. When should I arrive?",
+                    "I fly from LAX next Tuesday at 18:30 on a U.S. domestic flight. I will check one bag and do not have TSA PreCheck. When should I arrive?",
                   )
                 }
                 disabled={isBusy}
               >
-                LAX · next Tuesday · 18:30
+                LAX · checked bag · no PreCheck
               </button>
               <button
                 type="button"
                 onClick={() =>
                   setQuestion(
-                    "How early should I arrive at ORD for a 07:15 flight tomorrow?",
+                    "How early should I arrive at ORD for a U.S. domestic 07:15 flight tomorrow? Carry-on only, with TSA PreCheck.",
                   )
                 }
                 disabled={isBusy}
               >
-                ORD · tomorrow · 07:15
+                ORD · carry-on · PreCheck
               </button>
             </div>
 
@@ -575,7 +688,7 @@ export default function Home() {
             <span>ORCHESTRATION + DATA</span>
             <p>
               Trigger.dev chat.agent translates the question into a typed
-              ClickHouse query over U.S. OnTime records.
+              ClickHouse query over U.S. OnTime records. U.S. domestic only.
             </p>
           </div>
         </aside>
