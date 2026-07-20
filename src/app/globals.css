@@ -348,6 +348,25 @@ input[type="time"] {
   opacity: 0.68;
 }
 
+.cold-start-note {
+  align-items: baseline;
+  color: var(--muted);
+  display: flex;
+  font-size: 8px;
+  gap: 7px;
+  line-height: 1.45;
+  margin: 7px 2px 0;
+}
+
+.cold-start-note span {
+  color: var(--acid);
+  font-family: "DM Mono", monospace;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .prompt-examples {
   display: flex;
   flex-wrap: wrap;

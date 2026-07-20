@@ -655,6 +655,11 @@ export default function Home() {
                 maxLength={600}
               />
             </label>
+            <p className="cold-start-note">
+              <span>First request</span>
+              After a quiet period, ClickHouse may need 20–30 seconds to wake.
+              Later questions are fast.
+            </p>
 
             <div className="prompt-examples">
               <button
