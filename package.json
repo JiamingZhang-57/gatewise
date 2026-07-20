@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:sites": "opennextjs-cloudflare build",
     "start": "next start",
     "test": "tsc --pretty false --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir .test-dist tests/recommendation-model.test.ts src/lib/recommendation-model.ts && node --test .test-dist/tests/recommendation-model.test.js",
     "typecheck": "tsc --noEmit",
@@ -23,11 +24,13 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.1",
     "@trigger.dev/build": "4.5.4",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "trigger.dev": "4.5.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "^4.112.0"
   }
 }
