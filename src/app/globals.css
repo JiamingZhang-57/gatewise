@@ -1164,13 +1164,12 @@ input[type="time"] {
 
   .verdict-grid {
     align-items: start;
+    gap: 22px;
     grid-template-columns: 1fr;
   }
 
   .verdict-metrics {
-    position: absolute;
-    right: 30px;
-    top: 90px;
+    position: static;
   }
 
   .breakdown-grid {
