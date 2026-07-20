@@ -31,7 +31,7 @@ jobs:
         run: pnpm build:sites
 
       - name: Package Sites artifact
-        run: tar --dereference -czf gatewise-sites.tar.gz .open-next .openai/hosting.json wrangler.jsonc
+        run: tar --dereference --hard-dereference -czf gatewise-sites.tar.gz .open-next .openai/hosting.json wrangler.jsonc
 
       - name: Upload Sites artifact
         uses: actions/upload-artifact@v4
