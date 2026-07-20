@@ -135,6 +135,10 @@ development environment and Google AI Studio project. Never expose
 `TRIGGER_SECRET_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` or ClickHouse credentials
 in frontend code.
 
+Run [`clickhouse/schema.sql`](clickhouse/schema.sql) once in the ClickHouse
+Cloud SQL console before starting the app. Schema changes are deployed there
+instead of running DDL in the user-facing request path.
+
 Open two terminals in the project root:
 
 ```powershell

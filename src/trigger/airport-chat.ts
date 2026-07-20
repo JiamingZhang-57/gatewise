@@ -4,7 +4,7 @@ import {
   chat,
   type InferChatUIMessageFromTools,
 } from "@trigger.dev/sdk/ai";
-import { stepCountIs, streamText, tool } from "ai";
+import { hasToolCall, streamText, tool } from "ai";
 import { z } from "zod";
 
 import { AIRPORTS } from "@/lib/airport-advice";
@@ -127,7 +127,16 @@ export const airportChat = chat
         model: google("gemini-3.5-flash"),
         messages,
         abortSignal: signal,
-        stopWhen: stepCountIs(4),
+        providerOptions: {
+          google: {
+            thinkingConfig: {
+              thinkingLevel: "minimal",
+            },
+          },
+        },
+        // The executed tool result is already part of the stream. Stop here so
+        // the visual can render without waiting for another model request.
+        stopWhen: hasToolCall("analyzeAirport"),
         system: `
 You are Gatewise, a concise airport arrival assistant.
 ${dateContext}
@@ -143,7 +152,7 @@ Rules:
 - If any required values are missing or ambiguous, ask one short combined question covering every missing fact.
 - If the user says the flight is international, do not call the tool. Briefly explain the current U.S. domestic scope.
 - Once all six values are known, you MUST call analyzeAirport exactly once. Never invent, estimate, or calculate the result yourself.
-- After the tool returns, answer with at most one short sentence telling the user that the visual analysis is ready.
+- The analyzeAirport tool result is the final response. Do not plan any follow-up prose after calling it.
 - Match the user's language.
 - Never claim the result includes live security queues, road traffic, check-in queues, or carrier-specific cut-off times.
 - Do not return tables, lists, or a wall of text. The interactive visual is the product.

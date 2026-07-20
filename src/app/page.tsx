@@ -137,6 +137,19 @@ function getLatestAdvice(messages: GatewiseMessage[]) {
   return undefined;
 }
 
+function countAvailableAdvice(messages: GatewiseMessage[]) {
+  return messages.reduce(
+    (count, message) =>
+      count +
+      message.parts.filter(
+        (part) =>
+          part.type === "tool-analyzeAirport" &&
+          part.state === "output-available",
+      ).length,
+    0,
+  );
+}
+
 function AirportPulseChart({
   data,
   selectedHour,
@@ -512,9 +525,26 @@ export default function Home() {
     "I have a U.S. domestic flight from JFK tomorrow at 09:00. Carry-on only, and I have TSA PreCheck. When should I arrive?",
   );
   const liveResult = useMemo(() => getLatestAdvice(messages), [messages]);
+  const availableAdviceCount = useMemo(
+    () => countAvailableAdvice(messages),
+    [messages],
+  );
+  const [expectedAdviceCount, setExpectedAdviceCount] = useState<number | null>(
+    null,
+  );
   const result = liveResult ?? SAMPLE_RESULT;
   const isPreview = liveResult === undefined;
   const isBusy = status === "submitted" || status === "streaming";
+  const isWaitingForAdvice =
+    isBusy &&
+    (expectedAdviceCount === null ||
+      availableAdviceCount < expectedAdviceCount);
+
+  useEffect(() => {
+    if (!isBusy) {
+      setExpectedAdviceCount(null);
+    }
+  }, [isBusy]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -525,6 +555,7 @@ export default function Home() {
     }
 
     setQuestion("");
+    setExpectedAdviceCount(availableAdviceCount + 1);
     void sendMessage({ text });
   }
 
@@ -694,7 +725,11 @@ export default function Home() {
           </div>
         </aside>
 
-        <AdvicePanel result={result} preview={isPreview} busy={isBusy} />
+        <AdvicePanel
+          result={result}
+          preview={isPreview}
+          busy={isWaitingForAdvice}
+        />
       </div>
     </main>
   );
