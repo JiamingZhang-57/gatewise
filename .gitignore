@@ -1,0 +1,9 @@
+.trigger
+.agents
+.env*
+!.env.example
+.next
+node_modules
+tmp
+*.log
+*.tsbuildinfo
