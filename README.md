@@ -1,6 +1,7 @@
 # Gatewise
 
-Gatewise turns a flight question into a visual airport-arrival recommendation.
+Gatewise turns a U.S. domestic flight question into a visual airport-arrival
+recommendation.
 The current vertical slice uses:
 
 - **ClickHouse Cloud** for the app-owned airport analytics mart.
@@ -39,14 +40,17 @@ session-scoped Trigger.dev public token.
 ## Live agent flow
 
 1. The traveller asks a natural-language question.
-2. Gemini extracts the airport, local departure date and departure time.
+2. Gemini extracts the airport, local departure date/time, domestic scope,
+   checked-bag status and TSA PreCheck status.
 3. Trigger.dev runs the typed `analyzeAirport` tool.
 4. The tool queries the app-owned ClickHouse analytics mart.
 5. The frontend renders the returned recommendation as an explorable timeline,
    traffic curve and evidence cards.
 
 The model never writes SQL and never invents the recommendation. If a required
-trip value is missing, the agent asks one short follow-up question.
+trip value is missing, the agent asks one short combined follow-up question.
+International trips are rejected rather than silently analyzed with domestic
+data.
 
 ## Seed the analytics mart
 
@@ -65,20 +69,43 @@ staging and production.
 ## Current recommendation model
 
 The task looks at the selected airport, travel month, weekday and departure
-hour across 2015–2025, excluding the pandemic years 2020–2021. It starts from a
-configurable 120-minute domestic-flight baseline and adds:
+hour across 2015–2025, excluding the pandemic years 2020–2021. The visible
+formula starts from the official 120-minute domestic-flight baseline and adds:
 
+- 15 minutes when the traveller is checking a bag. This is a Gatewise handling
+  margin, not an airline rule.
 - 0 minutes below the 50th airport-hour traffic percentile.
 - 15 minutes from the 50th to 79th percentile.
 - 30 minutes at or above the 80th percentile.
 
-This is a historical congestion estimate, not a security-queue prediction.
-The OnTime dataset does not include passenger arrival, check-in, security,
-road-traffic or walking-time observations.
+TSA PreCheck is displayed but never subtracts a fixed number of minutes because
+expedited screening is not guaranteed on every trip. The interface shows both
+the data-informed comfort target and the official two-hour guideline.
+
+This is a historical flight-activity estimate, not a security-queue
+prediction. The OnTime dataset does not include passenger arrival, check-in,
+security, road-traffic or walking-time observations. Always verify the
+operating airline's check-in and baggage cut-offs.
+
+## Rule sources
+
+- [TSA travel tips](https://www.tsa.gov/news/press/factsheets/tsa-travel-tips)
+  — travellers are encouraged to arrive two hours before departure.
+- [American Airlines U.S. check-in guidance](https://www.aa.com/i18n/travel-info/check-in-and-arrival.jsp?locale=en_US)
+  — two-hour domestic arrival guidance and common check-in cut-offs.
+- [Delta U.S. check-in guidance](https://www.delta.com/us/en/check-in-security/check-in-time-requirements/domestic-check-in)
+  — two-hour guidance plus airport-specific baggage exceptions.
+
+Rules were last checked on 2026-07-20.
 
 ## Verify
 
 ```powershell
+pnpm test
 pnpm typecheck
 pnpm build
 ```
+
+## License
+
+[MIT](LICENSE)

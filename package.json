@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "tsc --pretty false --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir .test-dist tests/recommendation-model.test.ts src/lib/recommendation-model.ts && node --test .test-dist/tests/recommendation-model.test.js",
     "typecheck": "tsc --noEmit",
     "trigger:dev": "trigger dev",
     "trigger:deploy": "trigger deploy"

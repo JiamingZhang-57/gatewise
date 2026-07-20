@@ -23,12 +23,18 @@ export const airportArrivalAdvisor = task({
       origin: payload.origin,
       travelDate: payload.travelDate,
       departureTime: payload.departureTime,
+      flightScope: payload.flightScope,
+      checkedBag: payload.checkedBag,
+      tsaPrecheck: payload.tsaPrecheck,
     });
 
     const result = await calculateAirportAdvice({
       origin: payload.origin,
       travelDate: payload.travelDate,
       departureTime: payload.departureTime,
+      flightScope: payload.flightScope,
+      checkedBag: payload.checkedBag,
+      tsaPrecheck: payload.tsaPrecheck,
     });
 
     logger.info("Arrival recommendation calculated", {

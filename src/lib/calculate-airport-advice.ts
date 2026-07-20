@@ -1,14 +1,16 @@
 import type {
+  AirportAdviceInput,
   AirportAdviceResult,
   HourlyAirportStat,
 } from "@/lib/airport-advice";
 import { clickhouse } from "@/lib/clickhouse";
+import {
+  buildTimingRecommendation,
+  isValidCalendarDate,
+  subtractMinutesFromLocalDeparture,
+} from "@/lib/recommendation-model";
 
-export type AirportAdviceQuery = {
-  origin: string;
-  travelDate: string;
-  departureTime: string;
-};
+export type AirportAdviceQuery = AirportAdviceInput;
 
 type ClickHouseHourlyRow = {
   departure_hour: number | string;
@@ -32,6 +34,10 @@ const DAY_LABELS = [
 ];
 
 function getTravelParts(travelDate: string) {
+  if (!isValidCalendarDate(travelDate)) {
+    throw new Error(`Invalid departure date: ${travelDate}.`);
+  }
+
   const [year, month, day] = travelDate.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   const jsDay = date.getUTCDay();
@@ -39,22 +45,6 @@ function getTravelParts(travelDate: string) {
   return {
     month,
     dayOfWeek: jsDay === 0 ? 7 : jsDay,
-  };
-}
-
-function subtractMinutes(
-  travelDate: string,
-  departureTime: string,
-  minutes: number,
-) {
-  const [year, month, day] = travelDate.split("-").map(Number);
-  const [hour, minute] = departureTime.split(":").map(Number);
-  const departure = Date.UTC(year, month - 1, day, hour, minute);
-  const arrival = new Date(departure - minutes * 60_000);
-
-  return {
-    arrivalDate: arrival.toISOString().slice(0, 10),
-    arrivalTime: arrival.toISOString().slice(11, 16),
   };
 }
 
@@ -125,10 +115,11 @@ export async function calculateAirportAdvice(
     orderedLoads.filter((value) => value <= selectedHour.averageFlights)
       .length / orderedLoads.length;
   const crowdPercentile = Math.round(rank * 100);
-  const crowdBufferMinutes =
-    crowdPercentile >= 80 ? 30 : crowdPercentile >= 50 ? 15 : 0;
-  const baselineMinutes = 120;
-  const recommendedMinutes = baselineMinutes + crowdBufferMinutes;
+  const timing = buildTimingRecommendation({
+    checkedBag: query.checkedBag,
+    tsaPrecheck: query.tsaPrecheck,
+    crowdPercentile,
+  });
   const riskLevel =
     selectedHour.cancelledPercent >= 2.5 ||
     selectedHour.delayedPercent >= 30
@@ -137,10 +128,15 @@ export async function calculateAirportAdvice(
           selectedHour.delayedPercent >= 20
         ? "moderate"
         : "low";
-  const arrival = subtractMinutes(
+  const arrival = subtractMinutesFromLocalDeparture(
     query.travelDate,
     query.departureTime,
-    recommendedMinutes,
+    timing.recommendedMinutes,
+  );
+  const officialGuideline = subtractMinutesFromLocalDeparture(
+    query.travelDate,
+    query.departureTime,
+    timing.breakdown.officialBaselineMinutes,
   );
 
   return {
@@ -148,18 +144,24 @@ export async function calculateAirportAdvice(
     city: rows[0]?.city ?? origin,
     travelDate: query.travelDate,
     departureTime: query.departureTime,
+    flightScope: query.flightScope,
+    checkedBag: query.checkedBag,
+    tsaPrecheck: query.tsaPrecheck,
     dayOfWeek,
     dayLabel: DAY_LABELS[dayOfWeek],
     ...arrival,
-    recommendedMinutes,
-    baselineMinutes,
-    crowdBufferMinutes,
+    officialGuidelineTime: officialGuideline.arrivalTime,
+    officialGuidelineDate: officialGuideline.arrivalDate,
+    recommendedMinutes: timing.recommendedMinutes,
+    timingBreakdown: timing.breakdown,
+    crowdBufferMinutes: timing.breakdown.crowdBufferMinutes,
     crowdPercentile,
     riskLevel,
     selectedHour,
     hourly,
     dataWindow: "2015-2025, excluding 2020-2021",
+    rulesCheckedOn: "2026-07-20",
     caveat:
-      "Historical flight volume is a congestion proxy. Security, check-in, traffic and airline cut-off times are not included.",
+      "The 120-minute domestic baseline follows official guidance. Checked-bag and historical activity buffers are Gatewise estimates. PreCheck is expedited but not guaranteed, so no fixed time is deducted. Verify airline cut-offs and live airport conditions.",
   };
 }
