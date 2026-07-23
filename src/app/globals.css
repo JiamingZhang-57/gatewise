@@ -657,15 +657,29 @@ input[type="time"] {
 }
 
 .arrival-window {
-  align-items: baseline;
+  align-items: center;
   display: flex;
   gap: 16px;
 }
 
-.window-arrow {
-  color: var(--muted-2);
+.margin-flag {
+  background: rgba(255, 142, 125, 0.08);
+  border: 1px solid rgba(255, 142, 125, 0.3);
+  border-radius: 8px;
+  color: #ff9c8d;
+  display: flex;
+  flex-direction: column;
   font-family: "DM Mono", monospace;
-  font-size: 18px;
+  font-size: 8px;
+  gap: 2px;
+  letter-spacing: 0.08em;
+  padding: 7px 9px;
+}
+
+.margin-flag small {
+  color: var(--muted);
+  font-size: 6px;
+  letter-spacing: 0.06em;
 }
 
 .guideline-time {
@@ -728,6 +742,10 @@ input[type="time"] {
   color: var(--acid);
 }
 
+.metric-card.guideline strong {
+  color: #93f6b9;
+}
+
 .journey {
   margin: 37px 0 27px;
 }
@@ -761,11 +779,11 @@ input[type="time"] {
 .journey-node.active {
   background: var(--acid);
   box-shadow: 0 0 15px rgba(239, 255, 100, 0.5);
-  left: -2px;
+  transform: translateX(-50%);
 }
 
 .journey-node.guideline {
-  left: 48%;
+  left: -2px;
 }
 
 .journey-node.gate {
@@ -773,22 +791,26 @@ input[type="time"] {
 }
 
 .journey-labels {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  height: 34px;
   margin-top: 12px;
+  position: relative;
 }
 
-.journey-labels > div {
+.journey-label {
   display: flex;
   flex-direction: column;
+  position: absolute;
+  white-space: nowrap;
 }
 
-.journey-labels > div:nth-child(2) {
+.journey-label.practical-label {
   align-items: center;
+  transform: translateX(-50%);
 }
 
-.journey-labels > div:nth-child(3) {
+.journey-label.departure-label {
   align-items: flex-end;
+  right: 0;
 }
 
 .journey-labels strong {
@@ -860,11 +882,11 @@ input[type="time"] {
   margin: 4px 0 2px;
 }
 
-.breakdown-card.official {
+.breakdown-card.floor {
   border-color: rgba(130, 244, 177, 0.16);
 }
 
-.breakdown-card.official strong {
+.breakdown-card.floor strong {
   color: #93f6b9;
 }
 

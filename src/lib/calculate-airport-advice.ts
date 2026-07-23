@@ -136,7 +136,7 @@ export async function calculateAirportAdvice(
   const officialGuideline = subtractMinutesFromLocalDeparture(
     query.travelDate,
     query.departureTime,
-    timing.breakdown.officialBaselineMinutes,
+    timing.officialGuidelineMinutes,
   );
 
   return {
@@ -152,16 +152,17 @@ export async function calculateAirportAdvice(
     ...arrival,
     officialGuidelineTime: officialGuideline.arrivalTime,
     officialGuidelineDate: officialGuideline.arrivalDate,
+    officialGuidelineMinutes: timing.officialGuidelineMinutes,
     recommendedMinutes: timing.recommendedMinutes,
     timingBreakdown: timing.breakdown,
-    crowdBufferMinutes: timing.breakdown.crowdBufferMinutes,
+    crowdAdjustmentMinutes: timing.breakdown.crowdAdjustmentMinutes,
     crowdPercentile,
     riskLevel,
     selectedHour,
     hourly,
     dataWindow: "2015-2025, excluding 2020-2021",
-    rulesCheckedOn: "2026-07-20",
+    rulesCheckedOn: "2026-07-23",
     caveat:
-      "The 120-minute domestic baseline follows official guidance. Checked-bag and historical activity buffers are Gatewise estimates. PreCheck is expedited but not guaranteed, so no fixed time is deducted. Verify airline cut-offs and live airport conditions.",
+      "This is an aggressive, low-margin estimate, not a guarantee. It combines a 45-minute minimum airport-process estimate with bag, screening and historical-activity adjustments. The official two-hour guideline remains visible as a reference. Verify airline and airport cut-offs plus live security conditions.",
   };
 }

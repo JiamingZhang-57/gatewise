@@ -73,26 +73,27 @@ const SAMPLE_RESULT: AirportAdviceResult = {
   tsaPrecheck: true,
   dayOfWeek: 2,
   dayLabel: "Tuesday",
-  arrivalTime: "06:30",
+  arrivalTime: "08:00",
   arrivalDate: "2026-07-21",
   officialGuidelineTime: "07:00",
   officialGuidelineDate: "2026-07-21",
-  recommendedMinutes: 150,
+  officialGuidelineMinutes: 120,
+  recommendedMinutes: 60,
   timingBreakdown: {
-    officialBaselineMinutes: 120,
-    checkedBagBufferMinutes: 0,
-    crowdBufferMinutes: 30,
-    tsaPrecheckAdjustmentMinutes: 0,
+    minimumProcessMinutes: 45,
+    checkedBagMinutes: 0,
+    standardScreeningMinutes: 0,
+    crowdAdjustmentMinutes: 15,
   },
-  crowdBufferMinutes: 30,
+  crowdAdjustmentMinutes: 15,
   crowdPercentile: 88,
   riskLevel: "moderate",
   selectedHour: SAMPLE_HOURLY[9],
   hourly: SAMPLE_HOURLY,
   dataWindow: "Preview - ask Gatewise for live data",
-  rulesCheckedOn: "2026-07-20",
+  rulesCheckedOn: "2026-07-23",
   caveat:
-    "The 120-minute domestic baseline follows official guidance. Checked-bag and historical activity buffers are Gatewise estimates. PreCheck is expedited but not guaranteed, so no fixed time is deducted. Verify airline cut-offs and live airport conditions.",
+    "This is an aggressive, low-margin estimate, not a guarantee. It combines a 45-minute minimum airport-process estimate with bag, screening and historical-activity adjustments. The official two-hour guideline remains visible as a reference. Verify airline and airport cut-offs plus live security conditions.",
 };
 
 function formatDate(date: string) {
@@ -109,6 +110,14 @@ function formatMinutes(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
+function formatSignedMinutes(minutes: number) {
+  if (minutes === 0) {
+    return "0m";
+  }
+
+  return `${minutes > 0 ? "+" : "−"}${Math.abs(minutes)}m`;
 }
 
 function getMessageText(message: GatewiseMessage) {
@@ -307,24 +316,40 @@ function AirportPulseChart({
 }
 
 function JourneyTimeline({ result }: { result: AirportAdviceResult }) {
+  const practicalPosition = Math.min(
+    88,
+    Math.max(
+      12,
+      ((result.officialGuidelineMinutes - result.recommendedMinutes) /
+        result.officialGuidelineMinutes) *
+        100,
+    ),
+  );
+
   return (
     <div className="journey">
       <div className="journey-line">
         <span className="journey-progress" />
-        <span className="journey-node active" />
         <span className="journey-node guideline" />
+        <span
+          className="journey-node active"
+          style={{ left: `${practicalPosition}%` }}
+        />
         <span className="journey-node gate" />
       </div>
       <div className="journey-labels">
-        <div>
-          <strong>{result.arrivalTime}</strong>
-          <span>Comfort target</span>
-        </div>
-        <div>
+        <div className="journey-label guideline-label">
           <strong>{result.officialGuidelineTime}</strong>
-          <span>Official 2h line</span>
+          <span>Official 2h reference</span>
         </div>
-        <div>
+        <div
+          className="journey-label practical-label"
+          style={{ left: `${practicalPosition}%` }}
+        >
+          <strong>{result.arrivalTime}</strong>
+          <span>Latest practical arrival</span>
+        </div>
+        <div className="journey-label departure-label">
           <strong>{result.departureTime}</strong>
           <span>Departure</span>
         </div>
@@ -364,22 +389,16 @@ function AdvicePanel({
 
       <div className="verdict-grid">
         <div className="verdict">
-          <p>DATA-INFORMED ARRIVAL WINDOW</p>
+          <p>LATEST PRACTICAL AIRPORT ARRIVAL</p>
           <div className="arrival-window">
             <span className="arrival-time">{result.arrivalTime}</span>
-            <span className="window-arrow">→</span>
-            <span className="guideline-time">
-              {result.officialGuidelineTime}
+            <span className="margin-flag">
+              AGGRESSIVE
+              <small>LOW MARGIN</small>
             </span>
           </div>
           <div className="arrival-context">
-            <span>
-              {result.arrivalDate === result.officialGuidelineDate
-                ? formatDate(result.arrivalDate)
-                : `${formatDate(result.arrivalDate)} → ${formatDate(
-                    result.officialGuidelineDate,
-                  )}`}
-            </span>
+            <span>{formatDate(result.arrivalDate)}</span>
             <span className="context-separator" />
             <span>{result.origin}</span>
           </div>
@@ -387,9 +406,14 @@ function AdvicePanel({
 
         <div className="verdict-metrics">
           <div className="metric-card">
-            <span>Buffer</span>
+            <span>Latest buffer</span>
             <strong>{formatMinutes(result.recommendedMinutes)}</strong>
             <small>before departure</small>
+          </div>
+          <div className="metric-card guideline">
+            <span>Official reference</span>
+            <strong>{formatMinutes(result.officialGuidelineMinutes)}</strong>
+            <small>not used in formula</small>
           </div>
           <div className="metric-card accent">
             <span>Crowd level</span>
@@ -410,37 +434,35 @@ function AdvicePanel({
           <span>{formatMinutes(result.recommendedMinutes)} total</span>
         </div>
         <div className="breakdown-grid">
-          <div className="breakdown-card official">
-            <span>Official baseline</span>
-            <strong>
-              {result.timingBreakdown.officialBaselineMinutes}m
-            </strong>
-            <small>TSA + airline guidance</small>
+          <div className="breakdown-card floor">
+            <span>Minimum process</span>
+            <strong>{result.timingBreakdown.minimumProcessMinutes}m</strong>
+            <small>airport entrance to gate</small>
           </div>
           <div className="breakdown-card">
             <span>Checked bag</span>
-            <strong>
-              +{result.timingBreakdown.checkedBagBufferMinutes}m
-            </strong>
+            <strong>+{result.timingBreakdown.checkedBagMinutes}m</strong>
             <small>
-              {result.checkedBag ? "handling margin" : "carry-on only"}
+              {result.checkedBag ? "bag-drop margin" : "carry-on only"}
+            </small>
+          </div>
+          <div className="breakdown-card">
+            <span>Screening setup</span>
+            <strong>+{result.timingBreakdown.standardScreeningMinutes}m</strong>
+            <small>
+              {result.tsaPrecheck
+                ? "PreCheck assumed available"
+                : "standard screening"}
             </small>
           </div>
           <div className="breakdown-card accent">
             <span>Historical pressure</span>
-            <strong>+{result.timingBreakdown.crowdBufferMinutes}m</strong>
-            <small>ClickHouse activity proxy</small>
-          </div>
-          <div className="breakdown-card">
-            <span>TSA PreCheck</span>
             <strong>
-              {result.timingBreakdown.tsaPrecheckAdjustmentMinutes}m
+              {formatSignedMinutes(
+                result.timingBreakdown.crowdAdjustmentMinutes,
+              )}
             </strong>
-            <small>
-              {result.tsaPrecheck
-                ? "noted, never guaranteed"
-                : "standard screening"}
-            </small>
+            <small>ClickHouse activity proxy</small>
           </div>
         </div>
       </div>
@@ -452,8 +474,9 @@ function AdvicePanel({
           <p>
             {String(departureHour).padStart(2, "0")}:00 averages{" "}
             {result.selectedHour.averageFlights} scheduled departures. The
-            historical pressure signal adds {result.crowdBufferMinutes} minutes
-            without moving the official two-hour guideline later.
+            historical pressure signal adjusts the aggressive minimum by{" "}
+            {formatSignedMinutes(result.crowdAdjustmentMinutes)}. The official
+            two-hour recommendation stays visible only as a reference.
           </p>
         </div>
         <span className={`risk-pill ${result.riskLevel}`}>

@@ -1,15 +1,18 @@
-export const US_DOMESTIC_BASELINE_MINUTES = 120;
-export const CHECKED_BAG_BUFFER_MINUTES = 15;
+export const US_DOMESTIC_GUIDELINE_MINUTES = 120;
+export const MINIMUM_AIRPORT_PROCESS_MINUTES = 45;
+export const CHECKED_BAG_PROCESS_MINUTES = 15;
+export const STANDARD_SCREENING_PROCESS_MINUTES = 15;
 
 export type TimingBreakdown = {
-  officialBaselineMinutes: number;
-  checkedBagBufferMinutes: number;
-  crowdBufferMinutes: number;
-  tsaPrecheckAdjustmentMinutes: number;
+  minimumProcessMinutes: number;
+  checkedBagMinutes: number;
+  standardScreeningMinutes: number;
+  crowdAdjustmentMinutes: number;
 };
 
 export type TimingRecommendation = {
   breakdown: TimingBreakdown;
+  officialGuidelineMinutes: number;
   recommendedMinutes: number;
 };
 
@@ -26,8 +29,8 @@ export function isValidCalendarDate(value: string) {
   );
 }
 
-export function getCrowdBufferMinutes(crowdPercentile: number) {
-  return crowdPercentile >= 80 ? 30 : crowdPercentile >= 50 ? 15 : 0;
+export function getCrowdAdjustmentMinutes(crowdPercentile: number) {
+  return crowdPercentile >= 80 ? 15 : crowdPercentile >= 50 ? 0 : -10;
 }
 
 export function buildTimingRecommendation({
@@ -39,25 +42,34 @@ export function buildTimingRecommendation({
   tsaPrecheck: boolean;
   crowdPercentile: number;
 }): TimingRecommendation {
+  const minimumProcessMinutes = MINIMUM_AIRPORT_PROCESS_MINUTES;
+  const checkedBagMinutes = checkedBag ? CHECKED_BAG_PROCESS_MINUTES : 0;
+  const standardScreeningMinutes = tsaPrecheck
+    ? 0
+    : STANDARD_SCREENING_PROCESS_MINUTES;
+  const baseMinutes =
+    minimumProcessMinutes + checkedBagMinutes + standardScreeningMinutes;
+  const requestedCrowdAdjustment =
+    getCrowdAdjustmentMinutes(crowdPercentile);
+  const crowdAdjustmentMinutes = Math.max(
+    requestedCrowdAdjustment,
+    MINIMUM_AIRPORT_PROCESS_MINUTES - baseMinutes,
+  );
   const breakdown: TimingBreakdown = {
-    officialBaselineMinutes: US_DOMESTIC_BASELINE_MINUTES,
-    checkedBagBufferMinutes: checkedBag
-      ? CHECKED_BAG_BUFFER_MINUTES
-      : 0,
-    crowdBufferMinutes: getCrowdBufferMinutes(crowdPercentile),
-    // TSA describes PreCheck as expedited screening, but does not guarantee it
-    // on every trip. Gatewise records the status without subtracting a fixed
-    // number of minutes from the official domestic-arrival baseline.
-    tsaPrecheckAdjustmentMinutes: tsaPrecheck ? 0 : 0,
+    minimumProcessMinutes,
+    checkedBagMinutes,
+    standardScreeningMinutes,
+    crowdAdjustmentMinutes,
   };
 
   return {
     breakdown,
+    officialGuidelineMinutes: US_DOMESTIC_GUIDELINE_MINUTES,
     recommendedMinutes:
-      breakdown.officialBaselineMinutes +
-      breakdown.checkedBagBufferMinutes +
-      breakdown.crowdBufferMinutes +
-      breakdown.tsaPrecheckAdjustmentMinutes,
+      breakdown.minimumProcessMinutes +
+      breakdown.checkedBagMinutes +
+      breakdown.standardScreeningMinutes +
+      breakdown.crowdAdjustmentMinutes,
   };
 }
 

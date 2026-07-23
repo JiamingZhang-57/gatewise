@@ -36,9 +36,10 @@ export type AirportAdviceResult = {
   arrivalDate: string;
   officialGuidelineTime: string;
   officialGuidelineDate: string;
+  officialGuidelineMinutes: number;
   recommendedMinutes: number;
   timingBreakdown: TimingBreakdown;
-  crowdBufferMinutes: number;
+  crowdAdjustmentMinutes: number;
   crowdPercentile: number;
   riskLevel: "low" | "moderate" | "high";
   selectedHour: HourlyAirportStat;

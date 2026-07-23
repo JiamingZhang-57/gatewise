@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   buildTimingRecommendation,
-  getCrowdBufferMinutes,
+  getCrowdAdjustmentMinutes,
   isValidCalendarDate,
   subtractMinutesFromLocalDeparture,
 } from "../src/lib/recommendation-model.js";
@@ -15,14 +15,14 @@ test("calendar validation rejects normalized and malformed dates", () => {
   assert.equal(isValidCalendarDate("2026-2-01"), false);
 });
 
-test("crowd buffers change at the documented percentile boundaries", () => {
-  assert.equal(getCrowdBufferMinutes(49), 0);
-  assert.equal(getCrowdBufferMinutes(50), 15);
-  assert.equal(getCrowdBufferMinutes(79), 15);
-  assert.equal(getCrowdBufferMinutes(80), 30);
+test("crowd adjustments change at the documented percentile boundaries", () => {
+  assert.equal(getCrowdAdjustmentMinutes(49), -10);
+  assert.equal(getCrowdAdjustmentMinutes(50), 0);
+  assert.equal(getCrowdAdjustmentMinutes(79), 0);
+  assert.equal(getCrowdAdjustmentMinutes(80), 15);
 });
 
-test("a checked bag adds a visible handling buffer", () => {
+test("checked baggage and standard screening build an aggressive minimum", () => {
   const result = buildTimingRecommendation({
     checkedBag: true,
     tsaPrecheck: false,
@@ -30,23 +30,35 @@ test("a checked bag adds a visible handling buffer", () => {
   });
 
   assert.deepEqual(result.breakdown, {
-    officialBaselineMinutes: 120,
-    checkedBagBufferMinutes: 15,
-    crowdBufferMinutes: 30,
-    tsaPrecheckAdjustmentMinutes: 0,
+    minimumProcessMinutes: 45,
+    checkedBagMinutes: 15,
+    standardScreeningMinutes: 15,
+    crowdAdjustmentMinutes: 15,
   });
-  assert.equal(result.recommendedMinutes, 165);
+  assert.equal(result.officialGuidelineMinutes, 120);
+  assert.equal(result.recommendedMinutes, 90);
 });
 
-test("PreCheck never reduces the official two-hour baseline", () => {
+test("the quiet-window adjustment never breaks the 45-minute floor", () => {
   const result = buildTimingRecommendation({
     checkedBag: false,
     tsaPrecheck: true,
     crowdPercentile: 20,
   });
 
-  assert.equal(result.breakdown.tsaPrecheckAdjustmentMinutes, 0);
-  assert.equal(result.recommendedMinutes, 120);
+  assert.equal(result.breakdown.crowdAdjustmentMinutes, 0);
+  assert.equal(result.recommendedMinutes, 45);
+});
+
+test("a quiet window can reduce a larger setup without crossing the floor", () => {
+  const result = buildTimingRecommendation({
+    checkedBag: false,
+    tsaPrecheck: false,
+    crowdPercentile: 20,
+  });
+
+  assert.equal(result.breakdown.crowdAdjustmentMinutes, -10);
+  assert.equal(result.recommendedMinutes, 50);
 });
 
 test("the recommendation always equals the visible timing components", () => {

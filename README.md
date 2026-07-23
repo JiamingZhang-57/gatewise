@@ -4,8 +4,8 @@
 
 Gatewise turns a U.S. domestic flight question into a visual, data-backed
 airport-arrival recommendation. Instead of returning another wall of text, it
-shows one clear arrival window with an explorable timeline, hourly airport
-pressure curve and the evidence behind every added minute.
+shows the latest practical arrival target with an explorable timeline, hourly
+airport-pressure curve and the evidence behind every adjustment.
 
 [Live demo](https://gatewise.pli9qubac.chatgpt.site/) ·
 [Source code](https://github.com/JiamingZhang-57/gatewise) ·
@@ -20,10 +20,10 @@ Ask Gatewise:
 
 Gatewise returns:
 
-- A single data-informed arrival time.
+- A single, aggressive latest-practical arrival time.
 - The official two-hour domestic guideline for comparison.
-- A transparent breakdown of the baseline, checked-bag and historical-pressure
-  buffers.
+- A transparent breakdown of the minimum process, checked-bag, screening and
+  historical-pressure adjustments.
 - An interactive 24-hour airport activity curve.
 - Historical delay, cancellation and sample-size evidence.
 
@@ -91,25 +91,27 @@ short combined follow-up question.
 ## Recommendation model
 
 Gatewise compares the selected airport, travel month, weekday and departure
-hour across 2015–2025, excluding 2020–2021. The visible formula starts from the
-official 120-minute domestic-flight baseline and adds:
+hour across 2015–2025, excluding 2020–2021. The main result is intentionally an
+aggressive, low-margin estimate. It does not start from the official two-hour
+recommendation. Its visible formula is:
 
-- **Checked bag:** 15 minutes. This is a Gatewise handling margin, not an
-  airline rule.
-- **Below the 50th airport-hour traffic percentile:** 0 minutes.
-- **50th–79th percentile:** 15 minutes.
-- **80th percentile or above:** 30 minutes.
+- **Minimum airport process:** 45 minutes.
+- **Checked bag:** +15 minutes.
+- **Standard screening without TSA PreCheck:** +15 minutes.
+- **Below the 50th airport-hour traffic percentile:** −10 minutes, subject to a
+  hard 45-minute floor.
+- **50th–79th percentile:** no adjustment.
+- **80th percentile or above:** +15 minutes.
 
-TSA PreCheck is displayed but never subtracts a fixed number of minutes because
-expedited screening is not guaranteed on every trip. The interface always
-shows both the data-informed comfort target and the official two-hour line.
+The official 120-minute domestic guideline remains visible as a reference line
+but is not part of the latest-practical calculation.
 
 ### Important limitation
 
-This is a historical flight-activity estimate, not a live security-queue
-prediction. The OnTime dataset does not include passenger arrival, check-in,
-security, road traffic or airport walking-time observations. Travellers should
-still verify their airline's check-in and baggage cut-offs and check live
+This is an aggressive historical flight-activity estimate, not a guarantee or
+a live security-queue prediction. The OnTime dataset does not include passenger
+arrival, check-in, security, road traffic or airport walking-time observations.
+Airline and airport cut-offs vary, so travellers must verify them and check live
 airport conditions.
 
 ## Technology
@@ -184,11 +186,13 @@ pnpm build
 - [TSA travel tips](https://www.tsa.gov/news/press/factsheets/tsa-travel-tips)
   — travellers are encouraged to arrive two hours before departure.
 - [American Airlines U.S. check-in guidance](https://www.aa.com/i18n/travel-info/check-in-and-arrival.jsp?locale=en_US)
-  — two-hour domestic arrival guidance and common check-in cut-offs.
+  — a two-hour recommendation and a common 45-minute domestic check-in or bag
+  cut-off.
 - [Delta U.S. check-in guidance](https://www.delta.com/us/en/check-in-security/check-in-time-requirements/domestic-check-in)
-  — two-hour guidance plus airport-specific baggage exceptions.
+  — common 45-minute checked-bag, 30-minute no-bag check-in and 15-minute gate
+  minimums, plus airport exceptions.
 
-Rules were last checked on 2026-07-20.
+Rules were last checked on 2026-07-23.
 
 ## License
 
